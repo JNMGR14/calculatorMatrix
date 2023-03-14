@@ -4,10 +4,6 @@ import numpy as np
 
 
 def center(win):
-    """
-    centers a tkinter window
-    :param win: the main window or Toplevel window to center
-    """
     win.update_idletasks()
     width = win.winfo_width()
     frm_width = win.winfo_rootx() - win.winfo_x()
@@ -298,6 +294,47 @@ class Calculator(ttk.Frame):
     def matrix_multiplication(self):
         self.reset_matrix_position()
         self.symbolArit.configure(text="x")
+
+        sum = 0
+
+        reformat_matrix0 = []
+        reformat_matrix1= []
+
+        incr = 0
+        for z in range(0, int(self.input_variableF.get())):
+            tempArr = []
+            for y in range(0, int(self.input_variableC.get())):
+                tempArr.append(self.mt0[incr])
+                incr += 1
+            reformat_matrix0.append(tempArr)
+
+        incr = 0
+        for z in range(0, int(self.input_variableF.get())):
+            tempArr1 = []
+            for y in range(0, int(self.input_variableC.get())):
+                tempArr1.append(self.mt1[incr])
+                incr += 1
+            reformat_matrix1.append(tempArr1)
+
+        reformat_matrix0 = np.array(reformat_matrix0)
+        reformat_matrix1 = np.array(reformat_matrix1)
+
+        incr = 0
+        c = np.zeros((reformat_matrix0.shape[0],reformat_matrix1.shape[1]), dtype =int)
+        for row in range(int(self.input_variableF.get())):
+            for col in range(int(self.input_variableC.get())):
+                for elt in range(len(reformat_matrix1)):
+                    sum += int(reformat_matrix0[row, elt].get()) * int(reformat_matrix1[elt, col].get())
+                c[row, col] = sum
+                self.mt2[incr].configure(state="normal", width=6)
+                self.mt2[incr].delete(0,END)
+                self.mt2[incr].insert(END,sum)
+                incr += 1
+                sum = 0
+
+
+
+
 
     def on_button_pressed(self, txt):
         if txt in "Crear matrices":
