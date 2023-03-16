@@ -1,9 +1,19 @@
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
+from ttkbootstrap.toast import ToastNotification
 import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib import rcParams
+rcParams['text.usetex'] = True
+rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
+
+rcParams["font.family"] = "Latin Modern Roman"
+matplotlib.use('TkAgg')
 
 
-def center(win):
+def center(win):  # Esta clase se encarga de centrar ventanas
     win.update_idletasks()
     width = win.winfo_width()
     frm_width = win.winfo_rootx() - win.winfo_x()
@@ -17,6 +27,7 @@ def center(win):
     win.deiconify()
 
 
+# Esta clase genera ventanas emergentes especificamente para ingresos de datos para la multiplicacion escalar
 class Popup(object):
     def __init__(self, master):
         top = self.top = ttk.Toplevel(master)
@@ -35,14 +46,14 @@ class Popup(object):
         self.content_child = ttk.Frame(self.content, padding=10)
         self.content_child.pack()
 
-        self.b = ttk.Button(self.content_child, text='Continuar', command=self.cleanup, style=SUCCESS)
-        self.b.grid(row=0, column=0, padx=10, pady=10, columnspan=2)
-
         self.rdbtn1 = ttk.Radiobutton(self.content_child, text='Matriz uno', variable=self.option, value=1)
-        self.rdbtn1.grid(row=1, column=0, padx=10, pady=10)
+        self.rdbtn1.grid(row=0, column=0, padx=10, pady=10)
 
         self.rdbtn2 = ttk.Radiobutton(self.content_child, text='Matriz dos', variable=self.option, value=2)
-        self.rdbtn2.grid(row=1, column=1, padx=10, pady=10)
+        self.rdbtn2.grid(row=0, column=1, padx=10, pady=10)
+
+        self.b = ttk.Button(self.content_child, text='Continuar', command=self.cleanup, style=SUCCESS)
+        self.b.grid(row=1, column=0, padx=10, pady=10, columnspan=2)
 
     def cleanup(self):
         self.value = self.e.get()
@@ -58,26 +69,31 @@ class Calculator(ttk.Frame):
         self.input_variableF = ttk.StringVar()
         self.input_variableC = ttk.StringVar()
 
-        self.mt0 = []
-        self.mt1 = []
-        self.mt2 = []
+        self.is_btn_created = False
 
-        self.symbolArit = ttk.Label()
+        self.mt0 = []  # Arreglo de objetos de tipo Entry con los elementos de cada matriz
+        self.mt1 = []  # Arreglo de objetos de tipo Entry con los elementos de cada matriz
+        self.mt2 = []  # Arreglo de objetos de tipo Entry con los elementos de cada matriz
 
-        self.frames = []
-        self.frames_child = []
-        self.buttons = []
+        self.textMatrix = np.empty([2, 2])
 
-        self.objet_pop = None
+        self.symbolArit = ttk.Label()  # Variable para el simbolo de operacion
 
-        if "bootstyle" in kwargs:
+        self.frames = []  # Arreglo con contenedores principales
+        self.frame_results = [ttk.Frame()]  # Arreglo con contenedores principales
+        self.frames_child = []  # Arreglo con contenedores hijos de los contenedores principales
+        self.buttons = []  # Arreglo con panel de controles de operaciones
+
+        self.objet_pop = None  # Objeto para controlar las pop up
+
+        if "bootstyle" in kwargs:  # Determinante de estilo
             self.bootstyle = kwargs.pop("bootstyle")
         else:
             self.bootstyle = None
             self.create_title_display()
             self.create_gen_pad()
 
-    def create_title_display(self):
+    def create_title_display(self):  # Creador del titulo de la ventana
         digits = ttk.Label(
             master=self,
             font="TkFixedFont 14",
@@ -86,9 +102,9 @@ class Calculator(ttk.Frame):
         )
         digits.pack(pady=30)
 
-    def create_gen_pad(self):
-        container = ttk.Frame(master=self, padding=20, bootstyle=self.bootstyle)
-        container.pack(fill=X, expand=YES)
+    def create_gen_pad(self):  # Generador del panel principal de ingreso de datos
+        container = ttk.Frame(master=self, padding=20, bootstyle=self.bootstyle)  # Frame contenedor del panel
+        container.pack(fill=X, expand=YES)  # Caracteristicas del panel
         matrix = [
             "Ingrese filas:",
             self.input_variableF,
@@ -113,8 +129,6 @@ class Calculator(ttk.Frame):
         btn.grid(row=1, column=0, sticky=NS, padx=10)
 
     def create_operations_pad(self):
-        for x in self.buttons:
-            x.destroy()
         container = ttk.Frame(master=self, padding=20, bootstyle=self.bootstyle)
         container.pack(fill=X, expand=YES)
         matrix = [
@@ -132,6 +146,7 @@ class Calculator(ttk.Frame):
             self.buttons.append(btn)
 
         self.buttons.append(container)
+        self.is_btn_created = True
 
     @staticmethod
     def create_entry(obj, master):
@@ -162,10 +177,7 @@ class Calculator(ttk.Frame):
         x = int(self.input_variableC.get())
         y = int(self.input_variableF.get())
 
-        for i in self.frames:
-            i.destroy()
-            self.mt0.clear()
-            self.mt1.clear()
+        self.reset_elements()
 
         main_cont = ttk.Frame(master=self, padding=20, bootstyle=self.bootstyle)  # Contenedor principal de las matrices
         main_cont.pack(fill=X, expand=YES)
@@ -235,41 +247,83 @@ class Calculator(ttk.Frame):
 
         self.create_operations_pad()
 
+    @staticmethod
+    def graph(self, ax, canvas):
+        left, width = .25, .5
+        bottom, height = .25, .5
+        right = left + width
+        top = bottom + height
+        tmptext = self.bmatrix(self, self.textMatrix)
+        tmptext = "$" + tmptext + "$"
+        ax.clear()
+        ax.text(0.5 * (left + right), 0.5 * (bottom + top), tmptext, horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize=15, family='Latin Modern Roman')
+        canvas.draw()
+
+    @staticmethod
+    def bmatrix(self, a):
+        """Returns a LaTeX bmatrix
+
+        :a: numpy array
+        :returns: LaTeX bmatrix as a string
+        """
+        if len(a.shape) > 2:
+            raise ValueError('bmatrix can at most display two dimensions')
+        lines = str(a).replace('[', '').replace(']', '').splitlines()
+        rv = [r'C_{'+str(self.input_variableF.get().replace(" ", "")) + r"\times " + (self.input_variableC.get().replace(" ", ""))+r'} = \begin{bmatrix}']
+        rv += ['  ' + ' & '.join(l.split()) + r'\\' for l in lines]
+        rv += [r'\end{bmatrix}']
+        print(''.join(rv).replace("'", ''))
+        return ''.join(rv).replace("'", '')
+
     def adition_matrix(self):
         self.reset_matrix_position()
         incr = 0
+        text_sum_array = []
         self.symbolArit.configure(text="+")
         for z in range(0, int(self.input_variableF.get())):
+            aux = []
             for y in range(0, int(self.input_variableC.get())):
                 e = self.mt2[incr]
                 e.configure(state="normal", width=4)
                 e.delete(0, END)
                 e.insert(END, '{}'.format(int(self.mt0[incr].get()) + int(self.mt1[incr].get())))
                 e.configure(state="readonly")
+                aux.append("("+str(self.mt0[incr].get()) + "+(" + str(self.mt1[incr].get())+"))")
                 incr += 1
+            text_sum_array.append(aux)
+        self.textMatrix = np.array(text_sum_array)
+        self.generate_result()
 
     def sustraction_matrix(self):
         self.reset_matrix_position()
         incr = 0
+        text_sum_array = []
         self.symbolArit.configure(text="-")
         for z in range(0, int(self.input_variableF.get())):
+            aux = []
             for y in range(0, int(self.input_variableC.get())):
                 e = self.mt2[incr]
                 e.configure(state="normal", width=4)
                 e.delete(0, END)
                 e.insert(END, '{}'.format(int(self.mt0[incr].get()) - int(self.mt1[incr].get())))
                 e.configure(state="readonly")
+                aux.append("("+str(self.mt0[incr].get()) + "-(" + str(self.mt1[incr].get())+"))")
                 incr += 1
+            text_sum_array.append(aux)
+        self.textMatrix = np.array(text_sum_array)
+        self.generate_result()
 
     def scalar_matrix(self):
         self.popup()
         escalar = int(self.entry_value())
         matrix_selected = int(self.entry_rbtn_value())
 
+        text_sum_array = []
         incr = 0
 
-        self.symbolArit.configure(text="x                  "+str(escalar))
+        self.symbolArit.configure(text="x                  " + str(escalar))
         for z in range(0, int(self.input_variableF.get())):
+            aux = []
             for y in range(0, int(self.input_variableC.get())):
                 e = self.mt2[incr]
                 e.configure(state="normal", width=4)
@@ -279,6 +333,7 @@ class Calculator(ttk.Frame):
                     locate.grid(row=0, column=0, padx=10)
 
                     e.insert(END, '{}'.format(int(self.mt0[incr].get()) * escalar))
+                    aux.append("("+str(self.mt0[incr].get()) + "*" + str(escalar)+")")
                     k = self.frames_child[2]
                     k.grid_forget()
                 else:
@@ -286,55 +341,94 @@ class Calculator(ttk.Frame):
                     locate.grid(row=0, column=0, padx=10)
 
                     e.insert(END, '{}'.format(int(self.mt1[incr].get()) * escalar))
+                    aux.append("("+str(self.mt1[incr].get()) + "*" + str(escalar)+")")
                     k = self.frames_child[0]
                     k.grid_forget()
                 e.configure(state="readonly")
                 incr += 1
+            text_sum_array.append(aux)
+
+        self.textMatrix = np.array(text_sum_array)
+        self.generate_result()
 
     def matrix_multiplication(self):
         self.reset_matrix_position()
+
         self.symbolArit.configure(text="x")
 
-        sum = 0
+        sum_content = 0
 
         reformat_matrix0 = []
-        reformat_matrix1= []
+        reformat_matrix1 = []
 
         incr = 0
         for z in range(0, int(self.input_variableF.get())):
-            tempArr = []
+            temp_arr = []
             for y in range(0, int(self.input_variableC.get())):
-                tempArr.append(self.mt0[incr])
+                temp_arr.append(self.mt0[incr])
                 incr += 1
-            reformat_matrix0.append(tempArr)
+            reformat_matrix0.append(temp_arr)
 
         incr = 0
         for z in range(0, int(self.input_variableF.get())):
-            tempArr1 = []
+            temp_arr1 = []
             for y in range(0, int(self.input_variableC.get())):
-                tempArr1.append(self.mt1[incr])
+                temp_arr1.append(self.mt1[incr])
                 incr += 1
-            reformat_matrix1.append(tempArr1)
+            reformat_matrix1.append(temp_arr1)
 
         reformat_matrix0 = np.array(reformat_matrix0)
         reformat_matrix1 = np.array(reformat_matrix1)
 
-        incr = 0
-        c = np.zeros((reformat_matrix0.shape[0],reformat_matrix1.shape[1]), dtype =int)
-        for row in range(int(self.input_variableF.get())):
-            for col in range(int(self.input_variableC.get())):
-                for elt in range(len(reformat_matrix1)):
-                    sum += int(reformat_matrix0[row, elt].get()) * int(reformat_matrix1[elt, col].get())
-                c[row, col] = sum
-                self.mt2[incr].configure(state="normal", width=6)
-                self.mt2[incr].delete(0,END)
-                self.mt2[incr].insert(END,sum)
-                incr += 1
-                sum = 0
+        if reformat_matrix0.shape[1] == reformat_matrix1.shape[0]:
+            incr = 0
+            c = np.zeros((reformat_matrix0.shape[0], reformat_matrix1.shape[1]), dtype=int)
+            for row in range(int(self.input_variableF.get())):
+                for col in range(int(self.input_variableC.get())):
+                    for elt in range(len(reformat_matrix1)):
+                        sum_content += int(reformat_matrix0[row, elt].get()) * int(reformat_matrix1[elt, col].get())
+                    c[row, col] = sum_content
+                    self.mt2[incr].configure(state="normal", width=6)
+                    self.mt2[incr].delete(0, END)
+                    self.mt2[incr].insert(END, sum_content)
+                    self.mt2[incr].configure(state="readonly", width=6)
+                    incr += 1
+                    sum_content = 0
+        else:
+            toast = ToastNotification(
+                title="Error",
+                message="Esta operacion no puede ser realizada por asimetria",
+                position=(0, 50, "se"),
+                alert=True,
+                duration=5000,
+                bootstyle=DANGER
+            )
+            toast.show_toast()  # display the Toast Notification
 
+    def generate_result(self):
+        self.frame_results[0].destroy()
+        self.frame_results.clear()
 
+        main_res_cont = ttk.Frame(master=self, padding=20)  # Contenedor principal de las matrices
+        main_res_cont.pack(fill=X, expand=YES)
 
+        self.frame_results.append(main_res_cont)
 
+        fig = matplotlib.figure.Figure(figsize=(20, 20), dpi=72)
+        ax = fig.add_subplot(111)
+
+        canvas = FigureCanvasTkAgg(fig, master=main_res_cont)
+        canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
+        canvas.tkcanvas.pack(side=TOP, fill=BOTH, expand=True)
+
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+
+        self.graph(self, ax, canvas)
 
     def on_button_pressed(self, txt):
         if txt in "Crear matrices":
@@ -363,6 +457,25 @@ class Calculator(ttk.Frame):
         locate.grid(row=0, column=0, padx=10)
         locate = self.frames_child[2]
         locate.grid(row=0, column=2, padx=10)
+
+    def reset_elements(self):
+        for btns in self.buttons:
+            btns.destroy()
+
+        for i in self.frames:
+            i.destroy()
+            self.buttons.clear()
+
+        for m in self.frames_child:
+            m.destroy()
+
+        self.buttons.clear()
+        self.frames.clear()
+        self.frames_child.clear()
+        self.mt0.clear()
+        self.mt1.clear()
+        self.mt2.clear()
+
 
 if __name__ == "__main__":
     app = ttk.Window(
